@@ -1,5 +1,5 @@
-# Planejamento Inicial - Fluxo Inteligente
-Grupo 21 Arcanine
+# Grupo 21 Arcanine Planejamento Inicial - Fluxo Inteligente 
+
 ## 1. Documentação inicial do projeto
 O **Fluxo Inteligente** é uma plataforma de *Spatial Analytics* desenvolvida para otimizar a gestão comercial, operacional e estratégica de shopping centers. O sistema transforma dados de movimentação capturados por câmeras em inteligência de negócios.
 
