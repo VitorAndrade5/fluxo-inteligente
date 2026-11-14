@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fluxo Inteligente · Capim Dourado</title>
+  <meta name="description" content="Mapa de calor e jornada de visitantes do Capim Dourado Shopping.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ícones -->
+  <svg class="icon-library" aria-hidden="true">
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h7"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10l6-3v10l-6-3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2ZM10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7L7 5Z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+  </svg>
+
+  <!-- Tela 1 · Autenticação -->
+  <div class="login-screen" id="loginScreen">
+    <form class="login-card" id="loginForm" novalidate>
+      <div class="brand login-brand">
+        <span class="brand-mark"><span></span><span></span><span></span></span>
+        <span class="brand-name">FLUXO <span>INTELIGENTE</span></span>
+      </div>
+      <h1>Acesso da equipe</h1>
+      <p class="login-sub">Spatial Analytics · Capim Dourado Shopping</p>
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" id="loginEmail" autocomplete="username" placeholder="nome@capimdourado.com.br" required>
+      </label>
+      <label class="field">
+        <span>Senha</span>
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="••••••••" required>
+      </label>
+      <p class="login-error" id="loginError" role="alert" hidden></p>
+      <button class="primary-button" type="submit" id="loginSubmit">
+        <span>Entrar no painel</span>
+        <svg><use href="#i-arrow"/></svg>
+      </button>
+      <button class="ghost-button" type="button" id="demoButton">Entrar em modo demonstração</button>
+      <p class="login-api" id="loginApi">Verificando API…</p>
+    </form>
+  </div>
+
+  <div class="app-shell" id="app" aria-hidden="true">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Fluxo Inteligente">
+        <span class="brand-mark"><span></span><span></span><span></span></span>
+        <span class="brand-name">FLUXO <span>INTELIGENTE</span></span>
+        <span class="brand-tag">MVP</span>
+      </a>
+
+      <div class="location-switcher">
+        <div>
+          <p class="eyebrow">ÁREA MONITORADA</p>
+          <strong class="location-name">Capim Dourado Shopping · Palmas-TO</strong>
+        </div>
+        <div class="floor-switch" role="tablist" aria-label="Pavimento">
+          <button type="button" role="tab" class="active" data-floor="T" aria-selected="true">Térreo</button>
+          <button type="button" role="tab" data-floor="P2" aria-selected="false">Piso 2 · Alimentação</button>
+        </div>
+        <label class="date-field">
+          <svg><use href="#i-clock"/></svg>
+          <input type="date" id="dateInput" aria-label="Data analisada">
+        </label>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="sync-state" id="syncState">
+          <span class="live-dot"></span>
+          <span><b id="syncLabel">CONECTANDO</b><small id="syncDetail">—</small></span>
+        </div>
+        <button class="icon-button notification-button" type="button" aria-label="Alertas de hotspot">
+          <svg><use href="#i-bell"/></svg>
+          <span class="notification-count" id="alertCount">0</span>
+        </button>
+        <button class="avatar" type="button" id="avatarButton" aria-label="Sair">OP</button>
+        <button class="icon-button mobile-menu" type="button" id="mobileMenu" aria-label="Menu">
+          <svg><use href="#i-menu"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <aside class="sidebar" id="sidebar">
+      <nav class="primary-nav" aria-label="Seções">
+        <a class="nav-item active" href="#" data-view="map"><svg><use href="#i-map"/></svg>Mapa de calor</a>
+        <a class="nav-item" href="#" data-view="journeys"><svg><use href="#i-route"/></svg>Jornadas<span class="nav-badge" id="navJourneys">—</span></a>
+        <a class="nav-item" href="#" data-view="metrics"><svg><use href="#i-chart"/></svg>Métricas<span class="nav-badge" id="navZones">52</span></a>
+      </nav>
+
+      <section class="status-section">
+        <div class="section-heading">
+          <p class="eyebrow">VISÃO DO PERÍODO</p>
+          <span class="timestamp" id="periodLabel">—</span>
+        </div>
+        <div class="stat-grid">
+          <article class="stat-card">
+            <span class="stat-label">Visitantes únicos</span>
+            <strong id="statVisitors">—</strong>
+            <span class="stat-meta" id="statVisitorsMeta">no período</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Passagens</span>
+            <strong id="statEvents">—</strong>
+            <span class="stat-meta" id="statEventsMeta">detecções</span>
+          </article>
+          <article class="stat-card stat-critical">
+            <span class="stat-label">Hotspots</span>
+            <strong id="statHot">—</strong>
+            <span class="stat-delta">≥ 80% da capacidade</span>
+          </article>
+          <article class="stat-card stat-cold">
+            <span class="stat-label">Coldspots</span>
+            <strong id="statCold">—</strong>
+            <span class="stat-meta">≤ 25% da capacidade</span>
+          </article>
+          <article class="stat-card wide">
+            <span class="stat-label">Zona mais ocupada</span>
+            <b class="stat-zone" id="statBusiest">—</b>
+            <div class="progress-row">
+              <div class="progress"><i id="statBusiestBar" style="width:0%"></i></div>
+              <small id="statBusiestPct">0%</small>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="layers-section">
+        <div class="section-heading">
+          <p class="eyebrow">CAMADAS</p>
+          <button class="text-button" type="button" id="toggleAll">Ocultar todas</button>
+        </div>
+        <div class="layer-list">
+          <label class="layer-option">
+            <span class="layer-key heat"></span>
+            <span><b>Mapa de calor</b><small>Concentração por zona</small></span>
+            <input type="checkbox" data-layer="heat" checked><span class="switch"></span>
+          </label>
+          <label class="layer-option">
+            <span class="layer-key occurrence"></span>
+            <span><b>Zonas monitoradas</b><small>Lojas, praças e acessos</small></span>
+            <input type="checkbox" data-layer="zone" checked><span class="switch"></span>
+          </label>
+          <label class="layer-option">
+            <span class="layer-key route"></span>
+            <span><b>Fluxos de jornada</b><small>Trajetos A → B mais comuns</small></span>
+            <input type="checkbox" data-layer="route" checked><span class="switch"></span>
+          </label>
+          <label class="layer-option">
+            <span class="layer-key team"></span>
+            <span><b>Câmeras</b><small>Sensores de fluxo (Monuv)</small></span>
+            <input type="checkbox" data-layer="camera"><span class="switch"></span>
+          </label>
+          <label class="layer-option">
+            <span class="layer-key plan"></span>
+            <span><b>Planta baixa</b><small>Planta mix · nov/2026</small></span>
+            <input type="checkbox" data-layer="plan" checked><span class="switch"></span>
+          </label>
+        </div>
+      </section>
+
+      <footer class="sidebar-footer">
+        <span class="system-health"><i></i><span id="healthText">Sistema operacional</span></span>
+        <span>Atualizado às <b id="sidebarTime">--:--</b> · Fluxo Inteligente v0.1</span>
+      </footer>
+    </aside>
+
+    <main class="main-content">
+      <div class="map-toolbar">
+        <div class="search-wrap">
+          <svg><use href="#i-search"/></svg>
+          <input id="mapSearch" type="search" placeholder="Buscar loja, praça ou nº da loja" autocomplete="off" aria-label="Buscar zona">
+          <kbd>⌘K</kbd>
+          <div class="search-results" id="searchResults" hidden></div>
+        </div>
+        <div class="filter-group" role="group" aria-label="Filtrar zonas">
+          <button class="filter-chip active" type="button" data-filter="all">Todas <span id="countAll">0</span></button>
+          <button class="filter-chip" type="button" data-filter="hot"><i class="critical"></i>Hotspots <span id="countHot">0</span></button>
+          <button class="filter-chip" type="button" data-filter="moderate"><i class="attention"></i>Moderadas <span id="countModerate">0</span></button>
+          <button class="filter-chip" type="button" data-filter="cold"><i class="stable"></i>Coldspots <span id="countCold">0</span></button>
+        </div>
+      </div>
+
+      <div class="map-stage" id="mapStage" tabindex="0" aria-label="Planta do shopping com mapa de calor">
+        <div class="map-canvas" id="mapCanvas">
+          <img class="plan-image" id="planImage" data-map-layer="plan" alt="Planta baixa do pavimento" draggable="false">
+          <canvas class="heat-layer" id="heatCanvas" data-map-layer="heat"></canvas>
+          <svg class="route-layer" id="routeLayer" data-map-layer="route" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <div class="map-markers" id="mapMarkers"></div>
+        </div>
+
+        <div class="zoom-controls">
+          <button type="button" id="zoomIn" aria-label="Aproximar"><svg><use href="#i-plus"/></svg></button>
+          <span id="zoomLevel">100%</span>
+          <button type="button" id="zoomOut" aria-label="Afastar"><svg><use href="#i-minus"/></svg></button>
+          <button type="button" id="recenter" aria-label="Centralizar"><svg><use href="#i-target"/></svg></button>
+        </div>
+
+        <div class="coordinates" id="floorBadge">TÉRREO · DIA INTEIRO</div>
+
+        <article class="incident-card closed" id="zoneCard" aria-live="polite">
+          <button class="close-card" type="button" id="closeZone" aria-label="Fechar">×</button>
+          <div class="incident-topline">
+            <span class="incident-status" id="zoneStatus"><i></i> —</span>
+            <span class="incident-time" id="zoneWindow">—</span>
+          </div>
+          <h2 id="zoneTitle">—</h2>
+          <p class="incident-location" id="zoneLocation">—</p>
+          <div class="incident-metrics">
+            <div><span>PASSAGENS</span><b id="zoneEntries">—</b></div>
+            <div><span>OCUPAÇÃO</span><b id="zoneOccupancy">—</b></div>
+            <div><span>PERMANÊNCIA</span><b id="zoneDwell">—</b></div>
+          </div>
+          <div class="zone-flows">
+            <p class="eyebrow">PRÓXIMO DESTINO MAIS COMUM</p>
+            <ol id="zoneDestinations"><li class="muted">—</li></ol>
+          </div>
+          <button class="primary-button" type="button" id="zoneJourneyButton">
+            <span>Analisar caminhos até esta zona</span>
+            <svg><use href="#i-arrow"/></svg>
+          </button>
+        </article>
+
+        <div class="map-legend">
+          <span>Baixa</span>
+          <span class="heat-scale" aria-hidden="true"></span>
+          <span>Alta concentração</span>
+          <span class="legend-sep"><i class="legend-dot critical"></i>Hotspot</span>
+          <span><i class="legend-dot attention"></i>Moderada</span>
+          <span><i class="legend-dot stable"></i>Coldspot</span>
+        </div>
+
+        <!-- Tela 3 · Jornadas e Métricas -->
+        <section class="analysis-panel" id="analysisPanel" hidden>
+          <div class="analysis-view" data-panel="journeys">
+            <header class="panel-head">
+              <div>
+                <p class="eyebrow">ANÁLISE DE JORNADA</p>
+                <h2>Percursos e tráfego cruzado</h2>
+              </div>
+              <span class="timestamp" id="journeyPeriod">—</span>
+            </header>
+            <div class="panel-grid">
+              <article class="panel-card">
+                <h3>Trajetos diretos mais comuns</h3>
+                <p class="panel-hint">Zona A → Zona B, todos os pavimentos</p>
+                <ol class="bar-list" id="topTransitions"></ol>
+              </article>
+              <article class="panel-card">
+                <div class="card-head">
+                  <h3>Caminhos até</h3>
+                  <select id="pathTarget" aria-label="Zona de destino"></select>
+                </div>
+                <p class="panel-hint">Até 3 zonas percorridas antes de chegar ao destino</p>
+                <ol class="path-list" id="pathsTo"></ol>
+              </article>
+              <article class="panel-card span-2">
+                <h3>Tráfego cruzado entre setores</h3>
+                <p class="panel-hint">Linhas: setor de origem · Colunas: setor de destino · passagens no período</p>
+                <div class="matrix-wrap"><table class="matrix" id="sectorMatrix"></table></div>
+              </article>
+              <article class="panel-card span-2">
+                <div class="card-head">
+                  <h3>Jornada de quem passa pelo setor</h3>
+                  <select id="sectorSelect" aria-label="Setor"></select>
+                </div>
+                <div class="flow-columns">
+                  <div><p class="eyebrow">VEM DE</p><ol class="bar-list" id="sectorOrigins"></ol></div>
+                  <div><p class="eyebrow">VAI PARA</p><ol class="bar-list" id="sectorDestinations"></ol></div>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="analysis-view" data-panel="metrics" hidden>
+            <header class="panel-head">
+              <div>
+                <p class="eyebrow">MÉTRICAS</p>
+                <h2>Ocupação por zona</h2>
+              </div>
+              <span class="timestamp" id="metricsPeriod">—</span>
+            </header>
+            <div class="panel-grid">
+              <article class="panel-card">
+                <h3>Distribuição por pavimento</h3>
+                <p class="panel-hint">Passagens no período selecionado</p>
+                <div class="floor-split" id="floorSplit"></div>
+              </article>
+              <article class="panel-card">
+                <h3>Pico do dia</h3>
+                <p class="panel-hint">Hora com mais passagens</p>
+                <p class="big-number" id="peakHour">—</p>
+                <p class="panel-hint" id="peakHourMeta">—</p>
+              </article>
+              <article class="panel-card span-2">
+                <h3>Ranking de zonas</h3>
+                <p class="panel-hint">Ordenado por ocupação (passagens ÷ capacidade confortável)</p>
+                <div class="matrix-wrap">
+                  <table class="ranking" id="zoneRanking">
+                    <thead><tr><th>Zona</th><th>Piso</th><th>Setor</th><th>Passagens</th><th>Ocupação</th><th>Permanência</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Linha do tempo: heatmap atualizado conforme o horário selecionado -->
+      <section class="activity-strip">
+        <div class="activity-title">
+          <button class="play-button" type="button" id="playButton" aria-label="Reproduzir o dia">
+            <svg><use href="#i-play"/></svg>
+          </button>
+          <div>
+            <p class="eyebrow">HORÁRIO</p>
+            <b id="hourLabel">Dia inteiro</b>
+          </div>
+        </div>
+        <div class="timeline" id="timeline" role="group" aria-label="Selecionar hora"></div>
+        <button class="view-all" type="button" id="wholeDay">Dia inteiro <svg><use href="#i-arrow"/></svg></button>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="data/mall.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
