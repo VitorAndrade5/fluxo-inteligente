@@ -1,46 +1,69 @@
-# Grupo 21 Arcanine Planejamento Inicial - Fluxo Inteligente 
+# Fluxo Inteligente
 
-## 1. Documentação inicial do projeto
-O **Fluxo Inteligente** é uma plataforma de *Spatial Analytics* desenvolvida para otimizar a gestão comercial, operacional e estratégica de shopping centers. O sistema transforma dados de movimentação capturados por câmeras em inteligência de negócios.
+Plataforma de **Spatial Analytics** para transformar dados de circulação em informações úteis à gestão de shopping centers. O MVP é voltado ao **Capim Dourado Shopping**, em Palmas–TO, e apresenta os dados em um painel interativo por pavimento, zona e período.
 
-O foco central da solução:
-* **Mapeamento de Jornada (Tracking de Trajeto):** Identificar o percurso de consumo dos visitantes. O sistema analisa padrões comportamentais, como por exemplo: quais corredores um cliente percorre antes de ir ao cinema? Qual o trajeto mais comum de quem consome no setor de vestuário?
-* **Zonas de Calor (Heatmaps):** Exibir a concentração de pessoas em diferentes ambientes e horários, identificando *hotspots* (áreas superlotadas) e *coldspots* (áreas de baixa circulação).
+> O projeto está em desenvolvimento. A integração com câmeras/Monuv é prevista; o sistema também conta com dados simulados para demonstração.
 
-**Visão de Futuro (Roadmap):** A arquitetura do projeto foi pensada para escalar. Futuramente, a mesma inteligência visual será aplicada para mapear vagas de estacionamento, permitindo que os motoristas visualizem vagas liberadas em tempo real (evitando rodar sem rumo), além de atuar em conjunto com a equipe de segurança patrimonial para identificação de fluxos anormais.
+## O que o painel oferece
 
-## 2. Proposta e estrutura inicial das telas
-A interface gerencial foi desenhada com foco em usabilidade, garantindo que os gestores do shopping acessem insights complexos de forma visual e intuitiva.
+- **Mapa de calor:** visualização da concentração de visitantes na planta, com filtros de período e pavimento.
+- **Análise por zona:** passagens, ocupação, permanência e identificação de hotspots e coldspots.
+- **Jornadas:** trajetos mais comuns, caminhos até uma zona e fluxo entre setores.
+- **Métricas:** resumo do período, pico de circulação e ranking de zonas.
+- **Acesso da equipe:** autenticação para consultar as áreas protegidas do painel e da API; também há modo de demonstração na interface.
 
-**Link para o Protótipo:** [Acessar telas no Figma](https://www.figma.com/design/xtOsYpudG0uO7d44zuQ03G/Flow-Intelligence-%E2%80%94-Produto---Arquitetura?node-id=0-1&t=vMNRauIOsor8CH3n-1)
- 
-* **Tela 1 - Autenticação:** Acesso seguro e restrito à equipe administrativa.
-* **Tela 2 - Dashboard (Mapa de Calor):** Exibe a planta baixa do shopping com a sobreposição de um *heatmap* dinâmico, atualizado de acordo com o horário selecionado.
-* **Tela 3 - Análise de Jornada e Métricas:** Painel com gráficos detalhando os percursos mais comuns e o volume de tráfego cruzado entre diferentes setores (ex: Praça de Alimentação vs. Lojas de Departamento).
+Os limites usados para classificar as zonas no painel são **hotspot a partir de 80%** e **coldspot até 25%** da capacidade indicada.
 
-## 3. Linguagem de programação escolhida
-* **Python:** Para a construção da lógica do servidor (backend) e processamento das regras de jornada.
-* **JavaScript, HTML5 e CSS3:** Para a construção da interface do usuário (frontend), manipulação dinâmica da planta do shopping e consumo dos dados.
-* **SQL:** Linguagem de consulta estruturada utilizada para modelagem e extração do histórico de trajetos no banco de dados.
+## Tecnologias e arquitetura
 
-## 4. Arquitetura proposta
-A solução adota uma arquitetura Cliente-Servidor (Client-Server) baseada em uma API:
-* **Coleta de Dados:** O sistema é desenhado para integrar via API com plataformas de Visão Computacional (como a Monuv), utilizando as câmeras de segurança já existentes no shopping como sensores de fluxo. Para este MVP, o backend simulará esses eventos de passagem.
-* **Processamento (Backend):** Recebe os eventos, calcula as áreas de concentração, processa a correlação de trajetos (ex: Setor A -> Setor B) e persiste as informações estruturadas.
-* **Visualização (Frontend):** Atua de forma isolada, consumindo os *endpoints* da API para renderizar o dashboard e os relatórios em tempo real no navegador do gestor.
+- **Interface:** HTML, CSS e JavaScript.
+- **API:** Python com FastAPI.
+- **Persistência:** SQL; configuração compatível com SQLite para desenvolvimento e PostgreSQL por URL de conexão.
+- **Hospedagem prevista:** Vercel, com suporte a banco PostgreSQL gerenciado.
+- **Dados:** eventos de circulação podem ser enviados à API; há simulador para gerar dados de demonstração.
 
-## 5. Plataforma e tecnologias adotadas
-* **Backend & API:** `FastAPI` (Python) — Adotado pela sua alta velocidade de execução, suporte a processos assíncronos e facilidade na criação de rotas REST.
-* **Frontend:** `HTML`, `CSS` e `JavaScript` — Adotado para manter o projeto leve e ágil durante o hackathon, facilitando a sobreposição de elementos gráficos na imagem do mapa.
-* **Banco de Dados:** Banco relacional (`SQL`) — Ideal para armazenar um alto volume de eventos temporais e realizar consultas complexas de cruzamento de trajetos.
-* **Design e Prototipação:** `Figma` — Para estruturação visual de telas e fluxos.
-* **Deploy (Hospedagem):** `Vercel` para o frontend web, garantindo integração contínua.
+Em alto nível, eventos de circulação são persistidos no banco e consultados pela API; o painel consome esses dados para montar o mapa e as análises. A integração com a plataforma Monuv é uma possibilidade de coleta prevista, não deve ser entendida como uma integração ativa garantida neste MVP.
 
-## 6. Descrição de como a tecnologia/prática sorteada será incorporada à solução
-A prática sorteada foi **Testes de integração (Testes de um fluxo completo, de ponta a ponta)**.
+## API
 
-No nosso sistema de *Spatial Analytics*, a confiabilidade dos dados exibidos no painel é crítica. Para garantir isso, a prática será incorporada no backend utilizando o framework de testes automatizados `pytest` do Python. O teste de integração irá validar o ciclo de vida completo de um registro de movimentação, executando o seguinte fluxo de ponta a ponta:
+A API FastAPI disponibiliza documentação interativa em `/docs` quando estiver em execução. Entre os recursos implementados estão:
 
-1. **Simulação (Input):** O script de teste dispara uma requisição HTTP `POST` simulando o rastreio de um visitante (ex: "Visitante passou do corredor de roupas para a praça de alimentação às 12h30").
-2. **Persistência:** O teste verifica se a API processou a regra de negócio e inseriu o dado de forma íntegra nas tabelas do banco de dados relacional.
-3. **Validação de Retorno (Output):** Imediatamente após a inserção, o teste realiza uma chamada `GET` no endpoint de relatórios. O objetivo é atestar que o dado recém-capturado é retornado corretamente, provando que o frontend em JavaScript receberá a informação exata necessária para atualizar o mapa de calor e a análise de trajeto sem quebras no fluxo.
+- `POST /api/auth/login` e `GET /api/auth/me` — autenticação;
+- `GET /api/health` — estado da API e do banco;
+- `GET /api/floors`, `GET /api/sectors` e `GET /api/zones` — catálogo da planta;
+- `POST /api/events` e `POST /api/events/batch` — ingestão de eventos;
+- `GET /api/heatmap` e `GET /api/heatmap/timeline` — mapa de calor e série temporal;
+- `GET /api/metrics/*` — resumo, permanência e datas disponíveis;
+- `GET /api/journeys/*` e `GET /api/visitors/{track_id}/journey` — análises de jornadas;
+- `POST /api/simulate` — geração administrativa de dados simulados.
+
+As rotas que consultam informações do painel requerem autenticação. A ingestão aceita a chave de API configurada ou um token de usuário, conforme a rota.
+
+## Configuração
+
+A aplicação lê configuração por variáveis de ambiente. As principais são:
+
+| Variável | Finalidade |
+| --- | --- |
+| `DATABASE_URL` ou `POSTGRES_URL` | URL do banco PostgreSQL; sem uma delas, a configuração usa SQLite local. |
+| `FLUXO_SECRET_KEY` | Chave para assinatura dos tokens de autenticação. |
+| `FLUXO_INGEST_KEY` | Chave para autenticar integrações de ingestão. |
+| `FLUXO_ADMIN_EMAIL` | E-mail da conta administrativa inicial. |
+| `FLUXO_ADMIN_PASSWORD` | Senha da conta administrativa inicial. |
+| `FLUXO_TOKEN_TTL_HOURS` | Validade do token em horas (padrão: 12). |
+| `FLUXO_AUTO_SIMULATE` | Ativa a simulação automática de dados (padrão: ativada). |
+| `FLUXO_SIMULATED_VISITORS` | Quantidade de visitantes usada pelo simulador (padrão: 3000). |
+| `FLUXO_CORS_ORIGINS` | Origens permitidas pelo CORS, separadas por vírgula. |
+| `CRON_SECRET` | Segredo usado pelo endpoint de simulação agendada. |
+
+**Segurança:** os valores padrão de desenvolvimento não devem ser usados em produção. Configure chaves e senha fortes antes de conectar a aplicação a um banco PostgreSQL. Evite publicar segredos no repositório.
+
+## Estrutura do repositório
+
+O repositório contém os arquivos da interface (`index.html`, `styles.css` e `script.js`), módulos Python da API e da persistência, além de scripts SQL de esquema, consultas e dados iniciais. `index.py` é o adaptador de entrada serverless para a Vercel. Consulte também [`ARQUITETURA (1) (1).md`](./ARQUITETURA%20(1)%20(1).md) para o diagrama conceitual.
+
+> A disposição dos arquivos de backend e frontend pode variar conforme o ambiente de execução/deploy; confira a configuração de execução correspondente antes de iniciar localmente ou publicar uma nova versão.
+
+## Contexto
+
+O produto busca apoiar decisões de operação e gestão comercial a partir de padrões agregados de circulação. O acompanhamento de trajetos deve respeitar as regras de privacidade e proteção de dados aplicáveis; o projeto não deve ser usado para identificar visitantes.
