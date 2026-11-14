@@ -1,0 +1,4 @@
+# Worker de visão computacional (máquina na borda, com acesso às câmeras)
+ultralytics==8.3.40
+opencv-python==4.10.0.84
+httpx==0.28.1

@@ -1,12 +1,14 @@
-"""Entrada da função serverless da Vercel: expõe a API FastAPI de backend/app.
+"""Entrada do app na Vercel (preset "Python"): a Vercel procura `app` neste arquivo.
 
-O vercel.json reescreve /api/* para esta função; o frontend estático sai de
-frontend/. Configure as variáveis de ambiente descritas no README (DATABASE_URL
-vem da integração Neon do Marketplace da Vercel).
+- A API FastAPI fica em backend/app; as rotas são /api/*.
+- O painel (HTML/CSS/JS) fica em public/, servido pela CDN da Vercel
+  (e também pelo próprio FastAPI, como reserva).
+- Banco: PostgreSQL via DATABASE_URL (integração Neon). Sem ela, usa SQLite
+  temporário em /tmp com dados simulados, só para demonstração.
 """
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "backend"))
 
 from app.main import app  # noqa: E402,F401

@@ -30,6 +30,13 @@
   const hourText = (h) => (h === null ? "Dia inteiro" : `${String(h).padStart(2, "0")}:00 – ${String(h + 1).padStart(2, "0")}:00`);
   const zoneName = (code) => zonesByCode[code]?.name ?? code;
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const pad2 = (n) => String(Math.floor(n)).padStart(2, "0");
+  const DWELL_MID_MIN = { ancora: 16.5, vestuario: 10.5, alimentacao: 27.5, entretenimento: 45, servicos: 9, circulacao: 3, acesso: 2 };
+  const PARKING_TARGET = { 9: 0.04, 10: 0.22, 11: 0.38, 12: 0.62, 13: 0.70, 14: 0.58, 15: 0.52, 16: 0.56, 17: 0.66, 18: 0.82, 19: 0.92, 20: 0.90, 21: 0.70, 22: 0.35, 23: 0.05 };
+  const PARKING_KINDS = ["comum", "pne", "idoso", "neurodiverso", "gestante"];
+  /* "2026-11-14T19:45:00" -> { date, min } (minutos desde 00:00) */
+  const splitAt = (at) => { const [date, time = "00:00:00"] = at.split("T"); const [h, m, sec = 0] = time.split(":").map(Number); return { date, min: h * 60 + m + sec / 60 }; };
+  const isoAt = (date, min) => `${date}T${pad2(min / 60)}:${pad2(min % 60)}:${pad2((min * 60) % 60)}`;
 
   const store = {
     get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -85,6 +92,10 @@
     sectorMatrix(date, hour) { return this.request("/api/journeys/sector-matrix", { params: { date, hour } }); }
     pathsTo(zone, date, limit = 5) { return this.request(`/api/journeys/paths-to/${encodeURIComponent(zone)}`, { params: { date, limit } }); }
     sectorFlow(sector, date, limit = 6) { return this.request(`/api/journeys/sector/${encodeURIComponent(sector)}`, { params: { date, limit } }); }
+    dashboard(at, period) { return this.request("/api/dashboard", { params: { at, period } }); }
+    cameras(at) { return this.request("/api/cameras", { params: { at } }); }
+    parking(at) { return this.request("/api/parking", { params: { at } }); }
+    parkingHistory(date) { return this.request("/api/parking/history", { params: { date } }); }
   }
 
   /* ========================================== modo demonstração (local) */
@@ -314,6 +325,162 @@
       }));
       const top = (m) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([code, total]) => ({ code, name: zoneName(code), total }));
       return { sector: { code: sector, name: sectorsByCode[sector].name }, origins: top(origins), destinations: top(dests) };
+    }
+
+    /* ---- dashboard operacional (mesmas regras de analytics.dashboard) ---- */
+    presence(date, atMin) {
+      const last = new Map();
+      this.events(date).forEach((e) => { if (e.t <= atMin) last.set(e.v, e); });
+      const out = {};
+      last.forEach((e) => {
+        if (e.t < atMin - 150) return;
+        if (zonesByCode[e.to].is_entrance && e.from) return;
+        out[e.to] = (out[e.to] || 0) + 1;
+      });
+      return out;
+    }
+
+    async dashboard(at, period) {
+      const { date, min: atMin } = splitAt(at);
+      const startMin = period === "today" ? 0 : Math.max(0, atMin - (period === "now" ? 15 : 60));
+      const present = {}; const capacity = {}; const entries = {}; const exits = {};
+      MALL.sectors.forEach((s) => { present[s.code] = 0; capacity[s.code] = 0; entries[s.code] = 0; exits[s.code] = 0; });
+      const byZone = this.presence(date, atMin);
+      MALL.zones.forEach((z) => { capacity[z.sector] += (z.capacity_hour * DWELL_MID_MIN[z.sector]) / 60; present[z.sector] += byZone[z.code] || 0; });
+      let mallIn = 0; let mallOut = 0;
+      const firstHour = Math.min(OPEN_HOUR, Math.floor(atMin / 60));
+      const series = {};
+      this.events(date).forEach((e) => {
+        if (e.t >= atMin) return;
+        const h = Math.floor(e.t / 60);
+        const isIn = !e.from; const isOut = !!e.from && zonesByCode[e.to].is_entrance;
+        if (h >= firstHour) { series[h] ||= { entries: 0, exits: 0 }; series[h].entries += isIn ? 1 : 0; series[h].exits += isOut ? 1 : 0; }
+        if (e.t < startMin) return;
+        mallIn += isIn ? 1 : 0; mallOut += isOut ? 1 : 0;
+        const ts = zonesByCode[e.to].sector; const fs = e.from ? zonesByCode[e.from].sector : null;
+        if (fs !== ts) { entries[ts] += 1; if (fs) exits[fs] += 1; }
+      });
+      const points = [];
+      for (let h = firstHour; h * 60 <= atMin; h += 1) {
+        points.push({ start: isoAt(date, h * 60), entries: series[h]?.entries || 0, exits: series[h]?.exits || 0, partial: (h + 1) * 60 > atMin });
+      }
+      const areas = MALL.sectors.map((s) => {
+        const cap = Math.max(1, Math.round(capacity[s.code]));
+        return { id: s.code, name: s.name, color: s.color, capacity: cap, peoplePresent: present[s.code],
+          entriesInPeriod: entries[s.code], exitsInPeriod: exits[s.code], occupancyPercent: Math.round((present[s.code] / cap) * 100) };
+      });
+      return {
+        updatedAt: at, isDemo: true, period: { key: period, from: isoAt(date, startMin), to: at },
+        totals: { peoplePresent: areas.reduce((a, x) => a + x.peoplePresent, 0), entries: mallIn, exits: mallOut },
+        areas, series: { bucket: "hour", points },
+      };
+    }
+
+    async cameras(at) {
+      const { date, min: atMin } = splitAt(at);
+      const present = this.presence(date, atMin);
+      const act = {};
+      this.events(date).forEach((e) => {
+        if (e.t > atMin || e.t < atMin - 60) return;
+        (act[e.to] ||= { entries: 0, exits: 0, last: null }).entries += 1;
+        act[e.to].last = Math.max(act[e.to].last ?? 0, e.t);
+        if (e.from) (act[e.from] ||= { entries: 0, exits: 0, last: null }).exits += 1;
+      });
+      return {
+        at,
+        cameras: MALL.zones.map((z) => ({
+          camera_id: z.camera_id, zone: z.code, zone_name: z.name, floor: z.floor, sector: z.sector, active: true,
+          people_in_view: present[z.code] || 0, entries_last_hour: act[z.code]?.entries || 0, exits_last_hour: act[z.code]?.exits || 0,
+          last_detection: act[z.code]?.last ? isoAt(date, act[z.code].last) : null, capacity_hour: z.capacity_hour,
+        })),
+      };
+    }
+
+    /* ---- estacionamento (mesmo modelo de services/parking.py) ---- */
+    parkingLayout() {
+      if (this.layout) return this.layout;
+      let id = 0;
+      this.layout = MALL.parking.map((lot) => {
+        const spaces = [];
+        for (let r = 0; r < lot.rows_count; r += 1) {
+          for (let c = 0; c < lot.cols_count; c += 1) {
+            const idx = r * lot.cols_count + c; id += 1;
+            spaces.push({ id, code: `${lot.code}-${String.fromCharCode(65 + r)}${pad2(c + 1)}`, row: r, col: c, kind: lot.specials[idx] || "comum" });
+          }
+        }
+        return { ...lot, spaces };
+      });
+      return this.layout;
+    }
+
+    parkingTimeline(date) {
+      this.parkingCache ||= new Map();
+      if (this.parkingCache.has(date)) return this.parkingCache.get(date);
+      const seed = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86400000);
+      const rnd = mulberry32(seed * 7919 + 17);
+      const timeline = new Map(); // id da vaga -> [[minuto, ocupada], ...]
+      this.parkingLayout().forEach((lot) => lot.spaces.forEach((sp) => {
+        const pref = lot.preference * (sp.kind !== "comum" ? 0.55 : 1);
+        const evs = []; let until = null;
+        for (let t = 9 * 60; t < 23 * 60 + 30; t += 5) {
+          if (until !== null && t >= until) { evs.push([until, 0]); until = null; }
+          if (until === null) {
+            const p = Math.min(0.97, (PARKING_TARGET[Math.floor(t / 60)] || 0) * pref);
+            const rate = p > 0 ? p / ((1 - p) * 110) : 0;
+            if (rnd() < rate * 5) {
+              const arrive = t + rnd() * 5;
+              const stay = t < 17 * 60 ? 35 + rnd() * 155 : 60 + rnd() * 150;
+              until = Math.min(arrive + stay, 23 * 60 + 30);
+              evs.push([arrive, 1]);
+            }
+          }
+        }
+        if (until !== null) evs.push([until, 0]);
+        timeline.set(sp.id, evs);
+      }));
+      this.parkingCache.set(date, timeline);
+      return timeline;
+    }
+
+    occupiedAt(evs, atMin) {
+      let occ = 0;
+      for (const [t, o] of evs) { if (t > atMin) break; occ = o; }
+      return occ === 1;
+    }
+
+    async parking(at) {
+      const { date, min: atMin } = splitAt(at);
+      const timeline = this.parkingTimeline(date);
+      const lots = this.parkingLayout().map((lot) => {
+        const byKind = Object.fromEntries(PARKING_KINDS.map((k) => [k, { total: 0, free: 0 }]));
+        let occupied = 0;
+        const spaces = lot.spaces.map((sp) => {
+          const occ = this.occupiedAt(timeline.get(sp.id), atMin);
+          occupied += occ ? 1 : 0; byKind[sp.kind].total += 1; byKind[sp.kind].free += occ ? 0 : 1;
+          return { code: sp.code, row: sp.row, col: sp.col, kind: sp.kind, occupied: occ };
+        });
+        const free = lot.total - occupied; const occupancy = Math.round((occupied / lot.total) * 1000) / 1000;
+        return { code: lot.code, name: lot.name, level_label: lot.level_label, total: lot.total, rows_count: lot.rows_count,
+          cols_count: lot.cols_count, is_estimate: !!lot.is_estimate, free, occupied, occupancy, by_kind: byKind, spaces,
+          state: free <= Math.max(2, lot.total * 0.03) ? "lotado" : occupancy >= 0.85 ? "cheio" : "livre" };
+      });
+      const total = lots.reduce((a, l) => a + l.total, 0); const free = lots.reduce((a, l) => a + l.free, 0);
+      const best = lots.filter((l) => l.state !== "lotado").sort((a, b) => b.free / b.total - a.free / a.total)[0];
+      return { at, lots, totals: { total, free, occupied: total - free, occupancy: Math.round(((total - free) / total) * 1000) / 1000 },
+        recommended: best ? { code: best.code, name: best.name, free: best.free } : null };
+    }
+
+    async parkingHistory(date) {
+      const timeline = this.parkingTimeline(date);
+      const lots = {};
+      this.parkingLayout().forEach((lot) => {
+        lots[lot.code] = [];
+        for (let h = 9; h < 24; h += 1) {
+          const occ = lot.spaces.filter((sp) => this.occupiedAt(timeline.get(sp.id), (h + 1) * 60 - 0.001)).length;
+          lots[lot.code].push({ hour: h, occupancy: Math.round((occ / lot.total) * 1000) / 1000 });
+        }
+      });
+      return { date, lots };
     }
   }
 
@@ -688,15 +855,45 @@
     } catch (err) { handleError(err); }
   }
 
+  /* telas em módulos separados (dashboard.js, vision.js, parking.js) */
+  const moduleView = (view) => window.FluxoViews?.[view];
+
   function setView(view) {
+    if (state.view !== view) moduleView(state.view)?.unmount?.();
     state.view = view;
     document.querySelectorAll(".nav-item").forEach((n) => n.classList.toggle("active", n.dataset.view === view));
     el.panel.hidden = view === "map";
+    el.panel.classList.toggle("wide-view", Boolean(moduleView(view)));
     document.querySelectorAll(".analysis-view").forEach((v) => { v.hidden = v.dataset.panel !== view; });
     if (view === "journeys") renderJourneys();
     if (view === "metrics") renderMetrics();
+    moduleView(view)?.mount?.(ctx);
     if (window.innerWidth <= 820) el.sidebar.classList.remove("open");
   }
+
+  /* instante de referência das telas operacionais: hora escolhida na linha do tempo, ou agora */
+  function refAt() {
+    const now = mallNow();
+    if (state.hour !== null) {
+      const minute = state.date === now.date && state.hour === now.hour ? now.minute : 59;
+      return `${state.date}T${pad2(state.hour)}:${pad2(minute)}:00`;
+    }
+    if (state.date === now.date) return `${now.date}T${pad2(now.hour)}:${pad2(now.minute)}:00`;
+    return `${state.date}T21:30:00`;
+  }
+
+  const ctx = {
+    get source() { return state.source; },
+    get mode() { return state.mode; },
+    get date() { return state.date; },
+    get hour() { return state.hour; },
+    refAt, mallNow, toast, handleError, fmt, pct, esc, clamp, pad2, splitAt,
+    MALL, zonesByCode, sectorsByCode, floorShort, OPEN_HOUR, CLOSE_HOUR,
+    isOpenHours() { const m = splitAt(refAt()).min; return m >= OPEN_HOUR * 60 && m <= CLOSE_HOUR * 60 + 30; },
+    setHour(h) { stopPlay(); setHour(h); },
+    showOnMap(code) { setView("map"); selectZone(code, { focus: true }); },
+  };
+  window.Fluxo = ctx;
 
   /* ====================================================== carregamento */
   async function refresh({ timeline = false } = {}) {
@@ -722,6 +919,7 @@
       if (state.selected) renderCard();
       if (state.view === "journeys") renderJourneys();
       if (state.view === "metrics") renderMetrics();
+      moduleView(state.view)?.refresh?.();
       const t = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date());
       $("#sidebarTime").textContent = t;
       $("#syncDetail").textContent = state.mode === "api" ? `sincronizado ${t}` : "dados simulados";
@@ -785,6 +983,7 @@
   /* ============================================================== login */
   function showLogin() {
     stopPlay();
+    if (state.view !== "map") setView("map");
     clearInterval(state.pollTimer);
     el.login.classList.remove("done");
     el.app.setAttribute("aria-hidden", "true");

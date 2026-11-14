@@ -1,0 +1,30 @@
+{
+  "_comentario": "Coordenadas em pixels do quadro da câmera. Desenhe a ROI, a linha e as vagas sobre um print da imagem.",
+  "cameras": [
+    {
+      "camera_id": "MNV-T-PRACA-CENTRAL",
+      "zone": "T-PRACA-CENTRAL",
+      "mode": "pessoas",
+      "source": "rtsp://usuario:senha@10.0.0.21:554/stream1",
+      "roi": [[120, 260], [1160, 260], [1280, 720], [0, 720]],
+      "line": [[200, 520], [1080, 520]]
+    },
+    {
+      "camera_id": "MNV-P2-MESAS-CENTRO",
+      "zone": "P2-MESAS-CENTRO",
+      "mode": "pessoas",
+      "source": "rtsp://usuario:senha@10.0.0.42:554/stream1",
+      "roi": [[0, 200], [1280, 200], [1280, 720], [0, 720]]
+    },
+    {
+      "camera_id": "MNV-S1-CAM01",
+      "mode": "estacionamento",
+      "source": "rtsp://usuario:senha@10.0.1.11:554/stream1",
+      "spaces": {
+        "S1-A01": [[40, 420], [180, 420], [200, 700], [20, 700]],
+        "S1-A02": [[190, 420], [330, 420], [350, 700], [210, 700]],
+        "S1-A03": [[340, 420], [480, 420], [500, 700], [360, 700]]
+      }
+    }
+  ]
+}
